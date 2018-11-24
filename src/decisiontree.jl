@@ -1,4 +1,6 @@
-using Ensemblearn  # TODO: delete this?
+__precompile__()
+
+using Ensemblearn
 
 export
     DecisionTree,
@@ -30,27 +32,33 @@ mutable struct DecisionTree
     min_impurity::Float64
     # The maximum depth to grow the tree to
     max_depth::Int64
-    # Function to calculate impurity (classif.=>info gain, regr=>variance reduct.)
-    #_impurity_calculation = None
+    # Impurity method to use on information gain calculation
+    impurity::String
     # Function to determine prediction of y at leaf
     #_leaf_value_calculation = None
     root  # Root node in dec. tree
     classes
 
-    function DecisionTree(min_samples_split=2::Int64, min_impurity=1e-7::Float64, max_depth=10::Int64, classes=nothing)
-        new(min_samples_split, min_impurity, max_depth, nothing, classes)
+    function DecisionTree(min_samples_split=2::Int64, min_impurity=1e-7::Float64, max_depth=10::Int64,
+                          impurity="gini"::String, classes=nothing)
+        # TODO: here assert impurity ?
+        new(min_samples_split, min_impurity, max_depth, impurity, nothing, classes)
     end
 end
 
-function calculate_information_gain(y::Array{T,2}, y1::Array{T2,1}, y2::Array{T2,1}) where {T <: Real, T2 <: Real}  # TODO: y::Array{T,1}
+impurity_methods = Dict("entropy" => entropy, "gini" => gini_index, "cerr" => classification_error)
+
+function calculate_information_gain(y::Array{T,2}, y1::Array{T2,1}, y2::Array{T2,1}, impurity="gini"::String) where{T <: Real, T2 <: Real}  # TODO: y::Array{T,1}
+
+    @assert haskey(impurity_methods, impurity)
+    i = impurity_methods[impurity]
+
     # Calculate information gain
     p = length(y1) / length(y)
-    info_gain = entropy(y) - p * entropy(y1) - (1 - p) * entropy(y2)
+    info_gain = i(y) - p * i(y1) - (1 - p) * i(y2)
 
     return info_gain
 end
-
-# TODO: Gini index ?
 
 function fill_dict!(d, ks, v=0)
     for k in ks
@@ -106,9 +114,9 @@ function fit!(tree::DecisionTree, x::Array{T,2}, y::Array{T2,1}; current_depth=0
                     y1 = xy1[:, end]
                     y2 = xy2[:, end]
 
-                    # Calculate impurity
-                    # TODO: impurity instead of information gain
-                    impurity = calculate_information_gain(y, y1, y2)
+                    # Calculate information gain
+                    # TODO: impurity (general method) instead of information gain (particular)
+                    impurity = calculate_information_gain(y, y1, y2, tree.impurity)
 
                     # If this threshold resulted in a higher information gain than previously
                     # recorded save the threshold value and the feature
@@ -133,8 +141,8 @@ function fit!(tree::DecisionTree, x::Array{T,2}, y::Array{T2,1}; current_depth=0
 
     if largest_impurity > tree.min_impurity
         # Build subtrees for the right and left branches
-        true_branch = DecisionTree(tree.min_samples_split, tree.min_impurity, tree.max_depth, tree.classes)
-        false_branch = DecisionTree(tree.min_samples_split, tree.min_impurity, tree.max_depth, tree.classes)
+        true_branch = DecisionTree(tree.min_samples_split, tree.min_impurity, tree.max_depth, tree.impurity, tree.classes)
+        false_branch = DecisionTree(tree.min_samples_split, tree.min_impurity, tree.max_depth, tree.impurity, tree.classes)
 
         fit!(true_branch, best_sets["leftx"], best_sets["lefty"], current_depth=current_depth + 1)
         fit!(false_branch, best_sets["rightx"], best_sets["righty"], current_depth=current_depth + 1)
@@ -143,8 +151,6 @@ function fit!(tree::DecisionTree, x::Array{T,2}, y::Array{T2,1}; current_depth=0
                                  true_branch=true_branch.root, false_branch=false_branch.root)
     else
         # We're at leaf => determine value
-        #leaf_value = modes(y)[1]  # TODO: preserve ratio
-
         leaf_value = count_distinct(y)
         fill_dict!(leaf_value, tree.classes)
 

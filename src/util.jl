@@ -44,7 +44,9 @@ function split_data(data, fraction)
     return data[1:s, :], data[s:end, :]
 end
 
-function entropy(y)
+# From https://bit.ly/2QnEacc
+
+function entropy(y::AbstractArray)
     """ Calculate the entropy of label array y """
     unique_labels = unique(y)
     e = 0
@@ -58,6 +60,38 @@ function entropy(y)
 
     return e
 end
+
+
+function gini_index(y::AbstractArray)
+    """ Calculate the Gini index of label array y """
+    unique_labels = unique(y)
+    e = 0
+    n = length(y)
+
+    for label in unique_labels
+        c = length(filter(x-> x==label, y))
+        p = c / n
+        e += p^2
+    end
+
+    return 1 - e
+end
+
+function classification_error(y::AbstractArray)
+    """ Calculate the Classification Error of label array y """
+    unique_labels = unique(y)
+    pp = []
+    n = length(y)
+
+    for label in unique_labels
+        c = length(filter(x-> x==label, y))
+        p = c / n
+        push!(pp, p)
+    end
+
+    return 1 - max(pp)
+end
+
 
 function modes(values)
     # From https://rosettacode.org/wiki/Averages/Mode#Julia

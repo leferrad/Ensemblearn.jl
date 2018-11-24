@@ -19,6 +19,7 @@ mutable struct RandomForest
     max_features::Union{Int64, Nothing}
     min_samples_split::Int64
     min_gain::Float64
+    impurity::String
     #bootstrap::Bool
     #oob_score::Bool
     seed::Int64
@@ -26,14 +27,14 @@ mutable struct RandomForest
     feature_indices::Union{Array{Array{Int64,1},1}, Nothing}  # TODO: Array{Int64, 2} ?
 
     function RandomForest(n_trees=10::Int64, max_depth=3::Int64, max_features=nothing::Union{Int64, Nothing},
-                          min_samples_split=2::Int64, min_gain=0.0::Float64, seed=123::Int64)
+                          min_samples_split=2::Int64, min_gain=0.0::Float64, impurity="gini"::String, seed=123::Int64)
         trees = []
 
         for i=1:n_trees
-            push!(trees, DecisionTree(min_samples_split, 1e-7, max_depth))
+            push!(trees, DecisionTree(min_samples_split, 1e-7, max_depth, impurity))
         end
 
-        new(n_trees, max_depth, max_features, min_samples_split, min_gain, seed, trees, nothing)
+        new(n_trees, max_depth, max_features, min_samples_split, min_gain, impurity, seed, trees, nothing)
     end
 
 end
